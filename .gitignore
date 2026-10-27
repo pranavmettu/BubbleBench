@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Environment and tool caches
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Secrets (commit .env.example instead)
+.env
+
+# Data: never commit videos; keep only the sources/licenses note
+data/*
+!data/README.md
+
+# Video and model weights anywhere in the repo
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.pt
+
+# Ultralytics default output folder
+runs/
+
+# macOS
+.DS_Store

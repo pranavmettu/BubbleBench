@@ -1,0 +1,32 @@
+[project]
+name = "bubblebench"
+version = "0.1.0"
+description = "Benchmark how bubbles, turbidity, and flicker degrade fish tracking in underwater video, and how well denoising recovers it."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Pranav Mettu" }]
+requires-python = ">=3.12"
+# Runtime dependencies are added in the milestone that first uses them.
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.6",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.6,<0.14.0"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# E/F: errors and undefined names, I: import order, UP: modern syntax, B: likely bugs
+select = ["E", "F", "I", "UP", "B"]
