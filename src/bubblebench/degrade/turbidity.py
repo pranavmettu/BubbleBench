@@ -5,11 +5,18 @@ Uses the standard underwater image formation model
 (backscatter) color, and ``t = exp(-beta * depth)`` the transmission. Larger ``beta``
 means murkier water. The blur models forward scatter: light from a distant object
 spreads out on its way to the camera, so far objects look soft as well as faded.
-It is off unless ``blur_strength`` is set.
+It is off unless ``blur_strength`` is set. ``apply_turbidity`` works on one frame;
+``Turbidity`` wraps it as a stage for :func:`bubblebench.degrade.base.degrade`.
 """
+
+from collections.abc import Iterable, Iterator
+from dataclasses import dataclass
+from typing import ClassVar
 
 import numpy as np
 from numpy.typing import NDArray
+
+from bubblebench.degrade.base import Frame, validate_severity
 
 # Greenish-blue veiling light typical of coastal and river water, in [0, 1] RGB.
 DEFAULT_VEIL_COLOR: tuple[float, float, float] = (0.25, 0.45, 0.40)
@@ -55,6 +62,36 @@ def apply_turbidity(
     veil = np.asarray(veil_color, dtype=np.float64) * 255.0
     degraded = signal * transmission + veil * (1.0 - transmission)
     return np.clip(np.rint(degraded), 0, 255).astype(np.uint8)
+
+
+# Settings at severity 1. Placeholders until the Gate C realism review sets them.
+BETA_MAX = 2.5
+BLUR_STRENGTH = 3.0
+
+
+@dataclass(frozen=True)
+class Turbidity:
+    """Pipeline stage for turbid water (see :class:`bubblebench.degrade.base.Degradation`).
+
+    Severity sets ``beta`` linearly from 0 to ``BETA_MAX``. ``blur_strength`` is a property
+    of the water and stays fixed, so the blur widens with severity through ``beta``.
+    The stage has no state over time, so ``fps`` and ``seed`` are unused.
+    """
+
+    severity: float
+    blur_strength: float = BLUR_STRENGTH
+    name: ClassVar[str] = "turbidity"
+
+    def __post_init__(self) -> None:
+        validate_severity(self.severity)
+        if self.blur_strength < 0:
+            raise ValueError("blur_strength must be >= 0")
+
+    def apply(self, frames: Iterable[Frame], fps: float, seed: int) -> Iterator[Frame]:
+        """Yield each frame degraded by turbid water."""
+        beta = self.severity * BETA_MAX
+        for frame in frames:
+            yield apply_turbidity(frame, beta, blur_strength=self.blur_strength)
 
 
 def _gaussian_kernel(sigma: float) -> NDArray[np.float64]:
