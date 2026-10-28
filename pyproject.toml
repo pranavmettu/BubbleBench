@@ -8,10 +8,13 @@ license-files = ["LICENSE"]
 authors = [{ name = "Pranav Mettu" }]
 requires-python = ">=3.12"
 # Runtime dependencies are added in the milestone that first uses them.
-dependencies = []
+dependencies = [
+    "numpy>=2.5.4",
+]
 
 [dependency-groups]
 dev = [
+    "pillow>=13.0.0",
     "pytest>=8",
     "ruff>=0.6",
 ]
