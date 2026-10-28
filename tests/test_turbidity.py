@@ -51,3 +51,54 @@ def test_rejects_bad_frames(bad: np.ndarray) -> None:
 def test_rejects_negative_beta() -> None:
     with pytest.raises(ValueError):
         apply_turbidity(_frame(), beta=-0.1)
+
+
+def _noisy_frame() -> np.ndarray:
+    rng = np.random.default_rng(1)
+    return rng.integers(0, 256, size=(32, 32, 3), dtype=np.uint8)
+
+
+def _roughness(frame: np.ndarray) -> float:
+    """Mean absolute difference between horizontally neighboring pixels; lower is softer."""
+    return float(np.abs(np.diff(frame.astype(np.float64), axis=1)).mean())
+
+
+def test_blur_without_attenuation_is_identity() -> None:
+    frame = _noisy_frame()
+    np.testing.assert_array_equal(apply_turbidity(frame, beta=0.0, blur_strength=5.0), frame)
+
+
+def test_blur_softens_more_as_strength_grows() -> None:
+    frame = _noisy_frame()
+    rough = [
+        _roughness(apply_turbidity(frame, beta=1.0, blur_strength=s)) for s in (0.0, 1.0, 2.0, 4.0)
+    ]
+    assert rough == sorted(rough, reverse=True)
+    assert rough[-1] < rough[0]
+
+
+def test_blur_leaves_flat_frame_unchanged() -> None:
+    flat = np.full((16, 16, 3), 100, dtype=np.uint8)
+    blurred = apply_turbidity(flat, beta=1.0, blur_strength=3.0)
+    np.testing.assert_array_equal(blurred, apply_turbidity(flat, beta=1.0))
+
+
+def test_blur_follows_per_pixel_depth() -> None:
+    frame = _noisy_frame()
+    depth = np.zeros((32, 32))
+    depth[:, 16:] = 2.0
+    blurred = apply_turbidity(frame, beta=1.0, depth=depth, blur_strength=2.0)
+    unblurred = apply_turbidity(frame, beta=1.0, depth=depth)
+    np.testing.assert_array_equal(blurred[:, :16], frame[:, :16])  # depth 0: sharp, untouched
+    assert _roughness(blurred[:, 20:]) < _roughness(unblurred[:, 20:])
+
+
+def test_blur_keeps_dtype_and_shape() -> None:
+    out = apply_turbidity(_noisy_frame(), beta=0.7, blur_strength=2.0)
+    assert out.dtype == np.uint8
+    assert out.shape == (32, 32, 3)
+
+
+def test_rejects_negative_blur_strength() -> None:
+    with pytest.raises(ValueError):
+        apply_turbidity(_frame(), beta=1.0, blur_strength=-1.0)
